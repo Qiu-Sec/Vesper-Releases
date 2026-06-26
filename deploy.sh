@@ -1,6 +1,6 @@
 #!/bin/bash
 # Vesper C2 — 一键部署脚本
-# curl -fsSL https://raw.githubusercontent.com/Qiu-Sec/Vesper/master/deploy.sh | bash
+# curl -fsSL https://raw.githubusercontent.com/Qiu-Sec/Vesper-Releases/main/deploy.sh | bash
 set -e
 
 RED='\033[0;31m'
@@ -8,7 +8,7 @@ GREEN='\033[0;32m'
 YELLOW='\033[1;33m'
 NC='\033[0m'
 
-VESPER_VER="${VESPER_VER:-v0.3.5}"
+VESPER_VER="${VESPER_VER:-v0.3.6}"
 SLIVER_VER="${SLIVER_VER:-v1.7.3}"
 INSTALL_DIR="${INSTALL_DIR:-$HOME/vesper}"
 PUBLIC_ADDR="${PUBLIC_ADDR:-0.0.0.0:8088}"

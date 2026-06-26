@@ -77,15 +77,35 @@ vesper-windows-amd64.exe --public 0.0.0.0:8088
 | 凭据收集 | 自动提取 + 哈希破解记录 |
 | 战利品 | 文件浏览 + 下载 |
 
+## 编译
+
+```bash
+./build.sh              # 当前平台
+./build.sh --all        # 交叉编译三平台 → release/
+```
+
 ## 环境要求
 
 **开发：** Go 1.21+ / Node.js 18+ / pnpm  
 **生产：** 零额外依赖，单二进制运行
 
+## 目录
+
+```
+Vesper/
+├── deploy.sh            # 一键部署
+├── build.sh             # 构建脚本
+├── start.sh             # 开发启动
+├── server/              # Go 后端
+├── web/                 # Vue3 前端
+├── sliver/              # Sliver Server 二进制（需自行下载）
+└── docs/                # 文档 + 截图
+```
+
+## 文档
+
+- [Sliver v1.7.3 兼容性补丁](docs/sliver-v1.7.3-patches.md)
+
 ## 默认账号
 
 `admin` / `admin123`
-
-## 注意事项
-
-Sliver v1.7.3 配合 Vesper 使用时存在兼容性问题，详见文档。

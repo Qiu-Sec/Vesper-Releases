@@ -23,8 +23,8 @@ echo ""
 
 # ── 检测平台 ──
 case "$(uname -s)" in
-    Linux)  PLATFORM="linux-amd64"; SLIVER_BIN_NAME="sliver-server_linux" ;;
-    Darwin) PLATFORM="darwin-amd64"; SLIVER_BIN_NAME="sliver-server_darwin" ;;
+    Linux)  PLATFORM="linux-amd64"; SLIVER_BIN_NAME="sliver-server_linux-amd64" ;;
+    Darwin) PLATFORM="darwin-amd64"; SLIVER_BIN_NAME="sliver-server_darwin-amd64" ;;
     MINGW*|MSYS*)
         echo -e "${YELLOW}[!] Windows 不支持一键部署，请手动下载。${NC}"
         echo "    Vesper: https://github.com/Qiu-Sec/Vesper-Releases/releases/download/${VESPER_VER}/vesper-windows-amd64.zip"

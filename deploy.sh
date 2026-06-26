@@ -56,6 +56,8 @@ else
         echo -e "${RED}需要 curl 或 wget${NC}"; exit 1
     fi
     unzip -o /tmp/vesper.zip -d "${INSTALL_DIR}" >/dev/null
+    # 重命名为统一名称 vesper
+    mv "${INSTALL_DIR}/vesper-${PLATFORM}" "${VESPER_BIN}" 2>/dev/null || true
     chmod +x "${VESPER_BIN}"
     rm -f /tmp/vesper.zip
     echo -e "  ${GREEN}✓${NC} $(du -h "${VESPER_BIN}" | cut -f1)"
@@ -85,15 +87,12 @@ sleep 1
 
 export SLIVER_ROOT_DIR="${SLIVER_ROOT}"
 
-"${SLIVER_BIN}" daemon \
-    --daemon-root "${SLIVER_ROOT}" \
-    --daemon-log "${SLIVER_ROOT}/logs/sliver-daemon.log" &
+nohup "${SLIVER_BIN}" daemon > /dev/null 2>&1 &
 SLIVER_PID=$!
-sleep 3
+sleep 8
 
 if ! kill -0 $SLIVER_PID 2>/dev/null; then
     echo -e "${RED}FATAL: Sliver daemon 启动失败${NC}"
-    cat "${SLIVER_ROOT}/logs/sliver-daemon.log" 2>/dev/null || true
     exit 1
 fi
 echo -e "  ${GREEN}✓${NC} PID=${SLIVER_PID}"

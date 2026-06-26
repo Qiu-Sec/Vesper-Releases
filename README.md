@@ -30,7 +30,7 @@
 curl -fsSL https://raw.githubusercontent.com/Qiu-Sec/Vesper-Releases/main/deploy.sh | bash
 ```
 
-访问 `http://<IP>:8088`，登录 `admin / admin123`
+访问 `http://<IP>:8088`，登录 `admin / changeme`
 
 ## 手动部署
 
@@ -116,7 +116,13 @@ Vesper/
 
 ## 默认账号
 
-`admin` / `admin123`
+`admin` / `changeme`
+
+可通过环境变量自定义：
+
+```bash
+VESPER_ADMIN_USER=admin VESPER_ADMIN_PASS=mypass ./vesper-linux-amd64 --public 0.0.0.0:8088
+```
 
 ## 免责声明
 

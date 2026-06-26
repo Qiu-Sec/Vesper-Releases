@@ -51,7 +51,7 @@
                               (~/.sliver/configs/)
 ```
 
-- **认证**：Vesper 内置 `admin/admin123`，JWT token 24h 有效
+- **认证**：Vesper 内置 `admin/changeme`，JWT token 24h 有效。可通过 `VESPER_ADMIN_USER` / `VESPER_ADMIN_PASS` 环境变量覆盖。
 - **Sliver 连接**：读取 `~/.sliver/configs/admin1_127.0.0.1.cfg`，含 token + mTLS 证书
 - **静态文件**：生产模式从内嵌 `dist/` 读取，开发模式走 Vite 代理
 

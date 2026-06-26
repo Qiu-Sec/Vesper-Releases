@@ -8,7 +8,7 @@ GREEN='\033[0;32m'
 YELLOW='\033[1;33m'
 NC='\033[0m'
 
-VESPER_VER="${VESPER_VER:-v0.3.2}"
+VESPER_VER="${VESPER_VER:-v0.3.3}"
 SLIVER_VER="${SLIVER_VER:-v1.7.3}"
 INSTALL_DIR="${INSTALL_DIR:-$HOME/vesper}"
 PUBLIC_ADDR="${PUBLIC_ADDR:-0.0.0.0:8088}"
@@ -134,7 +134,7 @@ echo -e "${GREEN}============================================${NC}"
 echo -e "${GREEN}  Vesper C2 部署完成！${NC}"
 echo ""
 echo "  Web:      http://$(hostname -I 2>/dev/null | awk '{print $1}' || echo 'localhost'):8088"
-echo "  登录:     admin / admin123"
+echo "  登录:     admin / changeme"
 echo "  Sliver:   ${LHOST}:31337"
 echo ""
 echo "  日志:     tail -f ${INSTALL_DIR}/vesper.log"

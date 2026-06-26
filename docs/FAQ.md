@@ -1,5 +1,16 @@
 # 常见问题
 
+## 部署相关
+
+### 如何修改默认密码
+
+```bash
+# 环境变量覆盖
+VESPER_ADMIN_USER=admin VESPER_ADMIN_PASS=MyNewP@ssw0rd ./vesper-linux-amd64 --public 0.0.0.0:8088
+```
+
+默认账号 `admin / changeme`，首次部署务必修改。
+
 ## 载荷生成
 
 ### 生成载荷返回 500 错误
@@ -103,6 +114,42 @@ tar czf sliver-backup-$(date +%Y%m%d).tar.gz ~/.sliver/
 cp ~/.sliver/sliver.db sliver.db.bak.$(date +%Y%m%d)
 ```
 
+## Sliver 兼容性
+
+### DNS 金丝雀触发后前端报 500
+
+**现象**：DNS 金丝雀被目标触发后，Vesper 前端返回 500 错误。
+
+**原因**：Sliver 内部 GORM 模型列名 `FirstTriggered` 默认映射 `first_triggered`，但 SQLite 实际列名是 `first_trigger`，不匹配导致 `no such column`。
+
+**解决**：需从源码编译 Sliver 打补丁，详见 [Sliver 兼容性补丁](docs/sliver-v1.7.3-patches.md)。
+
+### Telegram 通知静默失败
+
+**现象**：Sliver 配置了 Telegram 通知但从未收到消息。
+
+**原因**：服务器无 IPv6 环境时，Go 的 HTTP 客户端默认可能走 IPv6 连接 Telegram API，超时后静默失败。
+
+**解决**：需从源码编译 Sliver，强制 HTTP 客户端走 IPv4。详见补丁文档。
+
+### Token 被自动截断
+
+**现象**：Telegram 显示 `Not Found`，Sliver 日志中 token 只剩 14 字符。
+
+**原因**：`server.yaml` 中配置的 Telegram token 被自动截断。
+
+**修复**：
+
+```bash
+# 从 SQLite 取真实 token 写回 server.yaml
+sqlite3 ~/.sliver/sliver.db \
+  "SELECT api_key FROM monitoring_providers WHERE type='telegram';"
+```
+
+### 更多兼容性问题
+
+以上问题均需从源码编译 Sliver 修复，完整补丁清单见 [Sliver v1.7.3 兼容性补丁](docs/sliver-v1.7.3-patches.md)。升级 Sliver 版本后需重新验证。
+
 ## AI Chat
 
 ### AI 对话无响应
@@ -111,19 +158,3 @@ cp ~/.sliver/sliver.db sliver.db.bak.$(date +%Y%m%d)
 2. 检查 Provider Base URL 是否正确
 3. 网络可达（需要能访问对应 API 域名）
 4. 查看日志：`tail -f /tmp/vesper-prod.log`
-
-## 会话相关
-
-### 会话显示离线但主机仍在线
-
-Sliver 与 implant 之间的信标可能延迟，等待下一个 beacon 间隔（默认 60s）后自动检测。
-
-### 如何延长 Beacon 间隔
-
-右键主机 → Reconfigure → 修改 `Beacon Interval` 和 `Jitter` 值。
-
-### 交互终端无响应
-
-1. 确认会话状态为 "online"
-2. 如果是 Beacon，等待下一个回连间隔
-3. 尝试 `sleep 0` 命令重置交互

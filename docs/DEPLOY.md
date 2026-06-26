@@ -42,6 +42,9 @@ ss -tlnp | grep 31337
 # 基础启动
 ./vesper-linux-amd64 --public 0.0.0.0:8088
 
+# 自定义登录密码
+VESPER_ADMIN_USER=admin VESPER_ADMIN_PASS=MyP@ss ./vesper-linux-amd64 --public 0.0.0.0:8088
+
 # HTTPS（自签证书）
 ./vesper-linux-amd64 --public 0.0.0.0:443 --tls-cert cert.pem --tls-key key.pem
 

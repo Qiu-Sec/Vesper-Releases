@@ -126,8 +126,7 @@ Vesper/
 | `VESPER_AI_ENDPOINT` | `https://api.deepseek.com/chat/completions` | AI 接口地址 |
 | `VESPER_AI_MODEL` | `deepseek-v4-pro` | AI 模型名 |
 | `VESPER_AI_TYPE` | `openai` | API 类型（openai / anthropic） |
-| `VESPER_TELEGRAM_TOKEN` | （空） | Telegram Bot Token（金丝雀告警） |
-| `VESPER_TELEGRAM_CHAT_ID` | （空） | Telegram Chat ID |
+| `VESPER_VERSION` | `dev` | 版本号（编译时 ldflags 注入，ENV 可覆盖） |
 
 ```bash
 VESPER_ADMIN_PASS=MyP@ss VESPER_AI_API_KEY=sk-xxx ./vesper-linux-amd64 --public 0.0.0.0:8088

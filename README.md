@@ -104,6 +104,10 @@ Vesper/
 
 ## 文档
 
+- [系统架构](docs/ARCHITECTURE.md)
+- [生产部署指南](docs/DEPLOY.md)
+- [功能使用指南](docs/USAGE.md)
+- [常见问题](docs/FAQ.md)
 - [Sliver v1.7.3 兼容性补丁](docs/sliver-v1.7.3-patches.md)
 
 ## 默认账号

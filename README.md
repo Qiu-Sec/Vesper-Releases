@@ -20,6 +20,10 @@
 |----------|---------|
 | ![AI](docs/screenshots/aichat.png) | ![AI辅助](docs/screenshots/ai-assistant.png) |
 
+| 凭据记录 | 战利品管理 |
+|----------|-----------|
+| ![凭据](docs/screenshots/credentials.png) | ![战利品](docs/screenshots/loot.png) |
+
 ## 一键部署
 
 ```bash

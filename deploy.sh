@@ -1,6 +1,6 @@
 #!/bin/bash
 # Vesper C2 — 一键部署脚本
-# curl -fsSL https://raw.githubusercontent.com/Qiu-Sec/Vesper-Releases/main/deploy.sh | bash
+# curl -fsSL https://raw.githubusercontent.com/Qiu-Sec/Vesper/master/deploy.sh | bash
 set -e
 
 RED='\033[0;31m'
@@ -27,7 +27,7 @@ case "$(uname -s)" in
     Darwin) PLATFORM="darwin-amd64"; SLIVER_BIN_NAME="sliver-server_darwin" ;;
     MINGW*|MSYS*)
         echo -e "${YELLOW}[!] Windows 不支持一键部署，请手动下载。${NC}"
-        echo "    Vesper: https://github.com/Qiu-Sec/Vesper/releases/download/${VESPER_VER}/vesper-windows-amd64.zip"
+        echo "    Vesper: https://github.com/Qiu-Sec/Vesper-Releases/releases/download/${VESPER_VER}/vesper-windows-amd64.zip"
         echo "    Sliver: https://github.com/BishopFox/sliver/releases/download/${SLIVER_VER}/sliver-server_windows-amd64.exe"
         exit 1
         ;;
@@ -41,7 +41,7 @@ echo ""
 mkdir -p "${INSTALL_DIR}"
 
 # ── 下载 Vesper ──
-VESPER_URL="https://github.com/Qiu-Sec/Vesper/releases/download/${VESPER_VER}/vesper-${PLATFORM}.zip"
+VESPER_URL="https://github.com/Qiu-Sec/Vesper-Releases/releases/download/${VESPER_VER}/vesper-${PLATFORM}.zip"
 VESPER_BIN="${INSTALL_DIR}/vesper"
 
 echo "[1/4] 下载 Vesper..."

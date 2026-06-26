@@ -1,6 +1,6 @@
 # Vesper C2 — Sliver Web 控制台
 
-基于 Sliver C2 框架的 Web 端红队指挥中心。Vue3 + Go Gin + Sliver gRPC，单二进制部署。
+基于 Sliver C2 框架的 Web 管理面板，提供主机管理、载荷生成、交互终端、监听器配置等可视化操作。前端 Vue3 + NaiveUI，后端 Go Gin，通过 gRPC 连接 Sliver 守护进程。前后端一体编译为单二进制文件，支持 Linux / macOS / Windows，部署零外部依赖。
 
 ## 截图
 

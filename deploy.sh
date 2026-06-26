@@ -1,6 +1,6 @@
 #!/bin/bash
 # Vesper C2 — 一键部署脚本
-# curl -fsSL https://raw.githubusercontent.com/Qiu-Sec/Vesper-Releases/master/deploy.sh | bash
+# curl -fsSL https://raw.githubusercontent.com/Qiu-Sec/Vesper-Releases/main/deploy.sh | bash
 set -e
 
 RED='\033[0;31m'

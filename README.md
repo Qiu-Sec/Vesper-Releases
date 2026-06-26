@@ -23,7 +23,7 @@
 ## 一键部署
 
 ```bash
-curl -fsSL https://raw.githubusercontent.com/Qiu-Sec/Vesper-Releases/master/deploy.sh | bash
+curl -fsSL https://raw.githubusercontent.com/Qiu-Sec/Vesper-Releases/main/deploy.sh | bash
 ```
 
 访问 `http://<IP>:8088`，登录 `admin / admin123`

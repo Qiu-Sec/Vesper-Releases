@@ -114,15 +114,26 @@ Vesper/
 - [常见问题](docs/FAQ.md)
 - [Sliver v1.7.3 兼容性补丁](docs/sliver-v1.7.3-patches.md)
 
-## 默认账号
+## 环境变量
 
-`admin` / `changeme`
+所有配置通过环境变量设置，无需配置文件：
 
-可通过环境变量自定义：
+| 变量 | 默认值 | 说明 |
+|------|--------|------|
+| `VESPER_ADMIN_USER` | `admin` | 登录用户名 |
+| `VESPER_ADMIN_PASS` | `changeme` | 登录密码 |
+| `VESPER_AI_API_KEY` | （空） | AI API 密钥 |
+| `VESPER_AI_ENDPOINT` | `https://api.deepseek.com/chat/completions` | AI 接口地址 |
+| `VESPER_AI_MODEL` | `deepseek-v4-pro` | AI 模型名 |
+| `VESPER_AI_TYPE` | `openai` | API 类型（openai / anthropic） |
+| `VESPER_TELEGRAM_TOKEN` | （空） | Telegram Bot Token（金丝雀告警） |
+| `VESPER_TELEGRAM_CHAT_ID` | （空） | Telegram Chat ID |
 
 ```bash
-VESPER_ADMIN_USER=admin VESPER_ADMIN_PASS=mypass ./vesper-linux-amd64 --public 0.0.0.0:8088
+VESPER_ADMIN_PASS=MyP@ss VESPER_AI_API_KEY=sk-xxx ./vesper-linux-amd64 --public 0.0.0.0:8088
 ```
+
+源码位置：`server/internal/config/config.go`
 
 ## 免责声明
 

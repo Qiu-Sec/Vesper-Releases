@@ -83,7 +83,6 @@ echo "[3/4] 启动 Sliver 守护..."
 kill $(pgrep -f "${SLIVER_BIN_NAME}" 2>/dev/null) 2>/dev/null || true
 sleep 1
 
-export HOME="${SLIVER_ROOT}"
 export SLIVER_ROOT_DIR="${SLIVER_ROOT}"
 
 "${SLIVER_BIN}" daemon \
@@ -118,7 +117,7 @@ echo "[4/4] 启动 Vesper..."
 kill $(pgrep -f "vesper" 2>/dev/null) 2>/dev/null || true
 sleep 1
 
-nohup env HOME="${SLIVER_ROOT}" "${VESPER_BIN}" --public "${PUBLIC_ADDR}" \
+nohup env SLIVER_ROOT_DIR="${SLIVER_ROOT}" "${VESPER_BIN}" --public "${PUBLIC_ADDR}" \
     > "${INSTALL_DIR}/vesper.log" 2>&1 &
 VESPER_PID=$!
 sleep 2

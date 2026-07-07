@@ -80,33 +80,31 @@ VESPER_URL="https://github.com/Qiu-Sec/Vesper-Releases/releases/download/${VESPE
 VESPER_BIN="${INSTALL_DIR}/vesper"
 
 echo "[1/4] 下载 Vesper..."
-if [ -f "${VESPER_BIN}" ]; then
-    echo "  ✓ 已存在，跳过"
+# 强制删除旧版本，避免缓存旧二进制
+rm -f "${VESPER_BIN}" "${INSTALL_DIR}/vesper-${PLATFORM}"
+DL_OK=false
+if command -v curl &>/dev/null; then
+    curl -fsSL --retry 2 --connect-timeout 10 "${VESPER_URL}" -o /tmp/vesper.zip 2>/dev/null && DL_OK=true
+    # 直连失败，尝试 HTTP 代理
+    if [ "$DL_OK" != true ] && [ -n "${https_proxy}" ]; then
+        echo "  代理重试..."
+        curl -fsSL --retry 2 --connect-timeout 10 -x "${https_proxy}" "${VESPER_URL}" -o /tmp/vesper.zip 2>/dev/null && DL_OK=true
+    fi
+elif command -v wget &>/dev/null; then
+    wget -q --tries=3 "${VESPER_URL}" -O /tmp/vesper.zip 2>/dev/null && DL_OK=true
 else
-    DL_OK=false
-    if command -v curl &>/dev/null; then
-        curl -fsSL --retry 2 --connect-timeout 10 "${VESPER_URL}" -o /tmp/vesper.zip 2>/dev/null && DL_OK=true
-        # 直连失败，尝试 HTTP 代理
-        if [ "$DL_OK" != true ] && [ -n "${https_proxy}" ]; then
-            echo "  代理重试..."
-            curl -fsSL --retry 2 --connect-timeout 10 -x "${https_proxy}" "${VESPER_URL}" -o /tmp/vesper.zip 2>/dev/null && DL_OK=true
-        fi
-    elif command -v wget &>/dev/null; then
-        wget -q --tries=3 "${VESPER_URL}" -O /tmp/vesper.zip 2>/dev/null && DL_OK=true
-    else
-        echo -e "${RED}需要 curl 或 wget${NC}"; exit 1
-    fi
-    if [ "$DL_OK" != true ]; then
-        echo -e "${RED}FATAL: 下载失败，检查网络或设置代理: export https_proxy=http://127.0.0.1:7897${NC}"
-        exit 1
-    fi
-    unzip -o /tmp/vesper.zip -d "${INSTALL_DIR}" >/dev/null
-    # 重命名为统一名称 vesper
-    mv "${INSTALL_DIR}/vesper-${PLATFORM}" "${VESPER_BIN}" 2>/dev/null || true
-    chmod +x "${VESPER_BIN}"
-    rm -f /tmp/vesper.zip
-    echo -e "  ${GREEN}✓${NC} $(du -h "${VESPER_BIN}" | cut -f1)"
+    echo -e "${RED}需要 curl 或 wget${NC}"; exit 1
 fi
+if [ "$DL_OK" != true ]; then
+    echo -e "${RED}FATAL: 下载失败，检查网络或设置代理: export https_proxy=http://127.0.0.1:7897${NC}"
+    exit 1
+fi
+unzip -o /tmp/vesper.zip -d "${INSTALL_DIR}" >/dev/null
+# 重命名为统一名称 vesper
+mv "${INSTALL_DIR}/vesper-${PLATFORM}" "${VESPER_BIN}" 2>/dev/null || true
+chmod +x "${VESPER_BIN}"
+rm -f /tmp/vesper.zip
+echo -e "  ${GREEN}✓${NC} $(du -h "${VESPER_BIN}" | cut -f1)"
 
 # ── 下载 Sliver ──
 SLIVER_URL="https://github.com/BishopFox/sliver/releases/download/${SLIVER_VER}/${SLIVER_BIN_NAME}"
@@ -143,6 +141,7 @@ export SLIVER_ROOT_DIR="${SLIVER_ROOT}"
 # 用 setsid 彻底脱离终端，防止脚本退出时 daemon 被 kill
 setsid "${SLIVER_BIN}" daemon > /dev/null 2>&1 < /dev/null &
 SLIVER_PID=$!
+disown "${SLIVER_PID}" 2>/dev/null || true
 
 # 等待 Sliver gRPC 端口就绪（最多 30 秒）
 for i in $(seq 1 30); do
@@ -180,6 +179,7 @@ sleep 1
 setsid env SLIVER_ROOT_DIR="${SLIVER_ROOT}" "${VESPER_BIN}" --public "${PUBLIC_ADDR}" \
     > "${INSTALL_DIR}/vesper.log" 2>&1 &
 VESPER_PID=$!
+disown "${VESPER_PID}" 2>/dev/null || true
 sleep 2
 
 if ! kill -0 $VESPER_PID 2>/dev/null; then

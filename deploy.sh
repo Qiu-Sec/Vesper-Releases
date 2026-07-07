@@ -10,15 +10,17 @@ NC='\033[0m'
 
 VESPER_VER="${VESPER_VER:-v0.3.8}"
 SLIVER_VER="${SLIVER_VER:-v1.7.3}"
-INSTALL_DIR="${INSTALL_DIR:-$HOME/vesper}"
+INSTALL_DIR="${INSTALL_DIR:-$(pwd)}"
 PUBLIC_ADDR="${PUBLIC_ADDR:-0.0.0.0:8088}"
 OPERATOR_NAME="${OPERATOR_NAME:-admin1}"
 LHOST="${LHOST:-127.0.0.1}"
-SLIVER_ROOT="${SLIVER_ROOT:-$HOME/.sliver}"
+SLIVER_DIR="${INSTALL_DIR}/sliver"
+SLIVER_DATA="${INSTALL_DIR}/.sliver"
 
 echo -e "${GREEN}=== Vesper C2 一键部署 ${VESPER_VER} ===${NC}"
 echo "安装目录: ${INSTALL_DIR}"
-echo "Sliver 目录: ${SLIVER_ROOT}"
+echo "Sliver 目录: ${SLIVER_DIR}"
+echo "Sliver 数据: ${SLIVER_DATA}"
 echo ""
 
 # ── 环境检测 ──
@@ -39,9 +41,7 @@ check_cmd curl    "apt install curl"
 check_cmd unzip   "apt install unzip"
 check_cmd ss      "apt install iproute2"
 check_cmd pgrep   "apt install procps"
-check_cmd nohup   "apt install coreutils"
 
-# Sliver 生成 implant 需要 Go 编译器
 if ! command -v go &>/dev/null; then
     echo -e "  ${YELLOW}⚠${NC} go（生成 Payload 需要，建议: apt install golang-go）"
 fi
@@ -73,19 +73,17 @@ echo "平台: ${PLATFORM}"
 echo ""
 
 # ── 创建目录 ──
-mkdir -p "${INSTALL_DIR}"
+mkdir -p "${INSTALL_DIR}" "${SLIVER_DIR}" "${SLIVER_DATA}"
 
 # ── 下载 Vesper ──
 VESPER_URL="https://github.com/Qiu-Sec/Vesper-Releases/releases/download/${VESPER_VER}/vesper-${PLATFORM}.zip"
 VESPER_BIN="${INSTALL_DIR}/vesper"
 
 echo "[1/4] 下载 Vesper..."
-# 强制删除旧版本，避免缓存旧二进制
-rm -f "${VESPER_BIN}" "${INSTALL_DIR}/vesper-${PLATFORM}"
+rm -f "${INSTALL_DIR}/vesper-${PLATFORM}"
 DL_OK=false
 if command -v curl &>/dev/null; then
     curl -fsSL --retry 2 --connect-timeout 10 "${VESPER_URL}" -o /tmp/vesper.zip 2>/dev/null && DL_OK=true
-    # 直连失败，尝试 HTTP 代理
     if [ "$DL_OK" != true ] && [ -n "${https_proxy}" ]; then
         echo "  代理重试..."
         curl -fsSL --retry 2 --connect-timeout 10 -x "${https_proxy}" "${VESPER_URL}" -o /tmp/vesper.zip 2>/dev/null && DL_OK=true
@@ -100,7 +98,6 @@ if [ "$DL_OK" != true ]; then
     exit 1
 fi
 unzip -o /tmp/vesper.zip -d "${INSTALL_DIR}" >/dev/null
-# 重命名为统一名称 vesper
 mv "${INSTALL_DIR}/vesper-${PLATFORM}" "${VESPER_BIN}" 2>/dev/null || true
 chmod +x "${VESPER_BIN}"
 rm -f /tmp/vesper.zip
@@ -108,7 +105,7 @@ echo -e "  ${GREEN}✓${NC} $(du -h "${VESPER_BIN}" | cut -f1)"
 
 # ── 下载 Sliver ──
 SLIVER_URL="https://github.com/BishopFox/sliver/releases/download/${SLIVER_VER}/${SLIVER_BIN_NAME}"
-SLIVER_BIN="${INSTALL_DIR}/${SLIVER_BIN_NAME}"
+SLIVER_BIN="${SLIVER_DIR}/${SLIVER_BIN_NAME}"
 
 echo "[2/4] 下载 Sliver ${SLIVER_VER}..."
 if [ -f "${SLIVER_BIN}" ]; then
@@ -131,21 +128,19 @@ else
     echo -e "  ${GREEN}✓${NC} $(du -h "${SLIVER_BIN}" | cut -f1)"
 fi
 
-# ── 停止旧进程 ──
+# ── 启动 Sliver 守护 ──
 echo "[3/4] 启动 Sliver 守护..."
 kill $(pgrep -f "${SLIVER_BIN_NAME}" 2>/dev/null) 2>/dev/null || true
 sleep 1
 
-export SLIVER_ROOT_DIR="${SLIVER_ROOT}"
+export SLIVER_ROOT_DIR="${SLIVER_DATA}"
 
 SLIVER_STARTED=false
 for attempt in 1 2 3; do
-    # 用 setsid + disown 彻底脱离 shell 作业表
     setsid "${SLIVER_BIN}" daemon > /dev/null 2>&1 < /dev/null &
     SLIVER_PID=$!
     disown "${SLIVER_PID}" 2>/dev/null || true
 
-    # 等待 Sliver gRPC 端口就绪（最多 15 秒）
     for i in $(seq 1 15); do
         if ss -tlnp 2>/dev/null | grep -q ":31337 "; then
             SLIVER_STARTED=true
@@ -153,39 +148,45 @@ for attempt in 1 2 3; do
         fi
         sleep 1
     done
-    # 启动失败：杀进程 → 删旧数据库（Sliver v1.7.3 已知 bug）→ 重试
     kill "${SLIVER_PID}" 2>/dev/null || true
     sleep 2
-    rm -f "${SLIVER_ROOT}/sliver.db" "${SLIVER_ROOT}/sliver.db-shm" "${SLIVER_ROOT}/sliver.db-wal" 2>/dev/null
-    echo "  启动失败，清理数据库后第 ${attempt} 次重试..."
+    rm -f "${SLIVER_DATA}/sliver.db" "${SLIVER_DATA}/sliver.db-shm" "${SLIVER_DATA}/sliver.db-wal" 2>/dev/null
+    echo "  启动失败，清理后第 ${attempt} 次重试..."
 done
 
 if [ "$SLIVER_STARTED" != true ]; then
-    echo -e "${RED}FATAL: Sliver daemon 启动失败（重试 3 次），端口 31337 未监听${NC}"
-    exit 1
+    echo -e "  ${YELLOW}⚠${NC} Sliver 自动启动失败（v1.7.3 已知 gRPC bug）"
+    echo ""
+    echo -e "  ${YELLOW}请手动启动 Sliver:${NC}"
+    echo "    cd ${SLIVER_DATA}"
+    echo "    ${SLIVER_BIN} daemon &"
+    echo "    sleep 3"
+    echo "    ${SLIVER_BIN} operator --name ${OPERATOR_NAME} --lhost ${LHOST} --permissions all --save ${SLIVER_DATA}/configs/${OPERATOR_NAME}_${LHOST}.cfg"
+    echo ""
+else
+    echo -e "  ${GREEN}✓${NC} Sliver daemon PID=${SLIVER_PID}"
 fi
-echo -e "  ${GREEN}✓${NC} Sliver daemon PID=${SLIVER_PID}"
 
-# ── 初始化 Operator ──
-OPERATOR_CFG="${SLIVER_ROOT}/configs/${OPERATOR_NAME}_${LHOST}.cfg"
-mkdir -p "${SLIVER_ROOT}/configs"
-
-echo "  创建 operator '${OPERATOR_NAME}'..."
-# 每次都重建，确保证书与当前 daemon 一致
-rm -f "${OPERATOR_CFG}"
-"${SLIVER_BIN}" operator \
-    --name "${OPERATOR_NAME}" \
-    --lhost "${LHOST}" \
-    --permissions all \
-    --save "${OPERATOR_CFG}"
-echo -e "  ${GREEN}✓${NC} Operator 就绪"
+# 不管 Sliver 是否启动，都创建 operator 配置（如果 Sliver 活着就能创建）
+if [ "$SLIVER_STARTED" = true ]; then
+    OPERATOR_CFG="${SLIVER_DATA}/configs/${OPERATOR_NAME}_${LHOST}.cfg"
+    mkdir -p "${SLIVER_DATA}/configs"
+    echo "  创建 operator '${OPERATOR_NAME}'..."
+    rm -f "${OPERATOR_CFG}"
+    "${SLIVER_BIN}" operator \
+        --name "${OPERATOR_NAME}" \
+        --lhost "${LHOST}" \
+        --permissions all \
+        --save "${OPERATOR_CFG}"
+    echo -e "  ${GREEN}✓${NC} Operator 就绪"
+fi
 
 # ── 启动 Vesper ──
 echo "[4/4] 启动 Vesper..."
 kill $(pgrep -f "vesper" 2>/dev/null) 2>/dev/null || true
 sleep 1
 
-setsid env SLIVER_ROOT_DIR="${SLIVER_ROOT}" "${VESPER_BIN}" --public "${PUBLIC_ADDR}" \
+setsid env SLIVER_ROOT_DIR="${SLIVER_DATA}" "${VESPER_BIN}" --public "${PUBLIC_ADDR}" \
     > "${INSTALL_DIR}/vesper.log" 2>&1 &
 VESPER_PID=$!
 disown "${VESPER_PID}" 2>/dev/null || true
@@ -203,7 +204,11 @@ echo -e "${GREEN}  Vesper C2 部署完成！${NC}"
 echo ""
 echo "  Web:      http://$(hostname -I 2>/dev/null | awk '{print $1}' || echo 'localhost'):8088"
 echo "  登录:     admin / changeme"
-echo "  Sliver:   ${LHOST}:31337"
+echo ""
+echo "  目录结构:"
+echo "    ${INSTALL_DIR}/vesper        ← Vesper 面板"
+echo "    ${SLIVER_DIR}/${SLIVER_BIN_NAME}  ← Sliver 服务端"
+echo "    ${SLIVER_DATA}/              ← Sliver 数据"
 echo ""
 echo "  日志:     tail -f ${INSTALL_DIR}/vesper.log"
 echo "  停止:     kill ${VESPER_PID}"

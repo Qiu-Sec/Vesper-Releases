@@ -140,7 +140,8 @@ sleep 1
 
 export SLIVER_ROOT_DIR="${SLIVER_ROOT}"
 
-nohup "${SLIVER_BIN}" daemon > /dev/null 2>&1 &
+# 用 setsid 彻底脱离终端，防止脚本退出时 daemon 被 kill
+setsid "${SLIVER_BIN}" daemon > /dev/null 2>&1 < /dev/null &
 SLIVER_PID=$!
 
 # 等待 Sliver gRPC 端口就绪（最多 30 秒）
@@ -176,7 +177,7 @@ echo "[4/4] 启动 Vesper..."
 kill $(pgrep -f "vesper" 2>/dev/null) 2>/dev/null || true
 sleep 1
 
-nohup env SLIVER_ROOT_DIR="${SLIVER_ROOT}" "${VESPER_BIN}" --public "${PUBLIC_ADDR}" \
+setsid env SLIVER_ROOT_DIR="${SLIVER_ROOT}" "${VESPER_BIN}" --public "${PUBLIC_ADDR}" \
     > "${INSTALL_DIR}/vesper.log" 2>&1 &
 VESPER_PID=$!
 sleep 2

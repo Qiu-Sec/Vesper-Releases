@@ -136,10 +136,6 @@ echo "[3/4] 启动 Sliver 守护..."
 kill $(pgrep -f "${SLIVER_BIN_NAME}" 2>/dev/null) 2>/dev/null || true
 sleep 1
 
-# Sliver v1.7.3 启动时有 gRPC 竞态 bug，旧数据库会触发 panic
-# 删除旧数据库确保干净启动
-rm -f "${SLIVER_ROOT}/sliver.db" "${SLIVER_ROOT}/sliver.db-shm" "${SLIVER_ROOT}/sliver.db-wal"
-
 export SLIVER_ROOT_DIR="${SLIVER_ROOT}"
 
 SLIVER_STARTED=false
@@ -157,11 +153,11 @@ for attempt in 1 2 3; do
         fi
         sleep 1
     done
-    # 启动失败，强制杀进程，清理数据库，重试
+    # 启动失败：杀进程 → 删旧数据库（Sliver v1.7.3 已知 bug）→ 重试
     kill "${SLIVER_PID}" 2>/dev/null || true
     sleep 2
-    rm -f "${SLIVER_ROOT}/sliver.db" "${SLIVER_ROOT}/sliver.db-shm" "${SLIVER_ROOT}/sliver.db-wal"
-    echo "  启动失败，第 ${attempt} 次重试..."
+    rm -f "${SLIVER_ROOT}/sliver.db" "${SLIVER_ROOT}/sliver.db-shm" "${SLIVER_ROOT}/sliver.db-wal" 2>/dev/null
+    echo "  启动失败，清理数据库后第 ${attempt} 次重试..."
 done
 
 if [ "$SLIVER_STARTED" != true ]; then

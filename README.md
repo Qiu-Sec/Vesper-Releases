@@ -42,21 +42,13 @@ curl -fsSL https://raw.githubusercontent.com/Qiu-Sec/Vesper-Releases/main/deploy
 
 访问 `http://<IP>:8088`，登录 `admin / changeme`
 
-Vesper 会自动启动（Sliver 尝试自动启动，如失败会给出命令）。
-
-## 手动启动 Sliver
-
-如果自动启动失败（Sliver v1.7.3 有已知 gRPC 竞态 bug），在当前目录执行：
+Vesper 会自动启动，**Sliver 需要手动启动**（v1.7.3 有已知 gRPC 竞态 bug）：
 
 ```bash
 cd .sliver && ../sliver/sliver-server_linux-amd64 daemon &
-# 确认启动
-ss -tlnp | grep 31337
 # 初始化 operator（仅首次）
 ../sliver/sliver-server_linux-amd64 operator --name admin1 --lhost 127.0.0.1 --permissions all \
     --save .sliver/configs/admin1_127.0.0.1.cfg
-# 重启 Vesper
-kill $(pgrep vesper); sleep 1; ./vesper --public 0.0.0.0:8088 &
 ```
 
 ### Windows

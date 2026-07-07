@@ -24,7 +24,7 @@ echo "Sliver 数据: ${SLIVER_DATA}"
 echo ""
 
 # ── 环境检测 ──
-echo -e "${YELLOW}[0/4] 环境检测...${NC}"
+echo -e "${YELLOW}[0/3] 环境检测...${NC}"
 MISSING=""
 
 check_cmd() {
@@ -39,7 +39,6 @@ check_cmd() {
 
 check_cmd curl    "apt install curl"
 check_cmd unzip   "apt install unzip"
-check_cmd ss      "apt install iproute2"
 check_cmd pgrep   "apt install procps"
 
 if ! command -v go &>/dev/null; then
@@ -50,8 +49,8 @@ if [ -n "$MISSING" ]; then
     echo ""
     echo -e "${RED}FATAL: 缺少必需工具:${MISSING}${NC}"
     echo ""
-    echo "  Debian/Ubuntu: sudo apt install curl unzip iproute2 procps"
-    echo "  CentOS/RHEL:   sudo yum install curl unzip iproute procps-ng"
+    echo "  Debian/Ubuntu: sudo apt install curl unzip procps"
+    echo "  CentOS/RHEL:   sudo yum install curl unzip procps-ng"
     exit 1
 fi
 echo ""
@@ -79,7 +78,7 @@ mkdir -p "${INSTALL_DIR}" "${SLIVER_DIR}" "${SLIVER_DATA}"
 VESPER_URL="https://github.com/Qiu-Sec/Vesper-Releases/releases/download/${VESPER_VER}/vesper-${PLATFORM}.zip"
 VESPER_BIN="${INSTALL_DIR}/vesper"
 
-echo "[1/4] 下载 Vesper..."
+echo "[1/3] 下载 Vesper..."
 rm -f "${INSTALL_DIR}/vesper-${PLATFORM}"
 DL_OK=false
 if command -v curl &>/dev/null; then
@@ -107,7 +106,7 @@ echo -e "  ${GREEN}✓${NC} $(du -h "${VESPER_BIN}" | cut -f1)"
 SLIVER_URL="https://github.com/BishopFox/sliver/releases/download/${SLIVER_VER}/${SLIVER_BIN_NAME}"
 SLIVER_BIN="${SLIVER_DIR}/${SLIVER_BIN_NAME}"
 
-echo "[2/4] 下载 Sliver ${SLIVER_VER}..."
+echo "[2/3] 下载 Sliver ${SLIVER_VER}..."
 if [ -f "${SLIVER_BIN}" ]; then
     echo "  ✓ 已存在，跳过"
 else
@@ -128,63 +127,12 @@ else
     echo -e "  ${GREEN}✓${NC} $(du -h "${SLIVER_BIN}" | cut -f1)"
 fi
 
-# ── 启动 Sliver 守护 ──
-echo "[3/4] 启动 Sliver 守护..."
-kill $(pgrep -f "${SLIVER_BIN_NAME}" 2>/dev/null) 2>/dev/null || true
-sleep 1
-
-export SLIVER_ROOT_DIR="${SLIVER_DATA}"
-
-SLIVER_STARTED=false
-for attempt in 1 2 3; do
-    setsid "${SLIVER_BIN}" daemon > /dev/null 2>&1 < /dev/null &
-    SLIVER_PID=$!
-    disown "${SLIVER_PID}" 2>/dev/null || true
-
-    for i in $(seq 1 15); do
-        if ss -tlnp 2>/dev/null | grep -q ":31337 "; then
-            SLIVER_STARTED=true
-            break 2
-        fi
-        sleep 1
-    done
-    kill "${SLIVER_PID}" 2>/dev/null || true
-    sleep 2
-    rm -f "${SLIVER_DATA}/sliver.db" "${SLIVER_DATA}/sliver.db-shm" "${SLIVER_DATA}/sliver.db-wal" 2>/dev/null
-    echo "  启动失败，清理后第 ${attempt} 次重试..."
-done
-
-if [ "$SLIVER_STARTED" != true ]; then
-    echo -e "  ${YELLOW}⚠${NC} Sliver 自动启动失败（v1.7.3 已知 gRPC bug）"
-    echo ""
-    echo -e "  ${YELLOW}请手动启动 Sliver:${NC}"
-    echo "    cd ${SLIVER_DATA}"
-    echo "    ${SLIVER_BIN} daemon &"
-    echo "    sleep 3"
-    echo "    ${SLIVER_BIN} operator --name ${OPERATOR_NAME} --lhost ${LHOST} --permissions all --save ${SLIVER_DATA}/configs/${OPERATOR_NAME}_${LHOST}.cfg"
-    echo ""
-else
-    echo -e "  ${GREEN}✓${NC} Sliver daemon PID=${SLIVER_PID}"
-fi
-
-# 不管 Sliver 是否启动，都创建 operator 配置（如果 Sliver 活着就能创建）
-if [ "$SLIVER_STARTED" = true ]; then
-    OPERATOR_CFG="${SLIVER_DATA}/configs/${OPERATOR_NAME}_${LHOST}.cfg"
-    mkdir -p "${SLIVER_DATA}/configs"
-    echo "  创建 operator '${OPERATOR_NAME}'..."
-    rm -f "${OPERATOR_CFG}"
-    "${SLIVER_BIN}" operator \
-        --name "${OPERATOR_NAME}" \
-        --lhost "${LHOST}" \
-        --permissions all \
-        --save "${OPERATOR_CFG}"
-    echo -e "  ${GREEN}✓${NC} Operator 就绪"
-fi
-
 # ── 启动 Vesper ──
-echo "[4/4] 启动 Vesper..."
+echo "[3/3] 启动 Vesper..."
 kill $(pgrep -f "vesper" 2>/dev/null) 2>/dev/null || true
 sleep 1
+
+# Sliver 需用户手动启动（v1.7.3 有启动竞态 bug，自动启不稳定）
 
 setsid env SLIVER_ROOT_DIR="${SLIVER_DATA}" "${VESPER_BIN}" --public "${PUBLIC_ADDR}" \
     > "${INSTALL_DIR}/vesper.log" 2>&1 &
@@ -206,9 +154,14 @@ echo "  Web:      http://$(hostname -I 2>/dev/null | awk '{print $1}' || echo 'l
 echo "  登录:     admin / changeme"
 echo ""
 echo "  目录结构:"
-echo "    ${INSTALL_DIR}/vesper        ← Vesper 面板"
-echo "    ${SLIVER_DIR}/${SLIVER_BIN_NAME}  ← Sliver 服务端"
-echo "    ${SLIVER_DATA}/              ← Sliver 数据"
+echo "    ${INSTALL_DIR}/vesper                    ← Vesper 面板"
+echo "    ${SLIVER_DIR}/${SLIVER_BIN_NAME}         ← Sliver 服务端"
+echo "    ${SLIVER_DATA}/                          ← Sliver 数据"
+echo ""
+echo -e "  ${YELLOW}请手动启动 Sliver:${NC}"
+echo "    cd ${SLIVER_DATA} && ${SLIVER_BIN} daemon &"
+echo "    ${SLIVER_BIN} operator --name ${OPERATOR_NAME} --lhost ${LHOST} --permissions all \\"
+echo "        --save ${SLIVER_DATA}/configs/${OPERATOR_NAME}_${LHOST}.cfg"
 echo ""
 echo "  日志:     tail -f ${INSTALL_DIR}/vesper.log"
 echo "  停止:     kill ${VESPER_PID}"

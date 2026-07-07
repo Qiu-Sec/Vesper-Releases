@@ -30,24 +30,33 @@
 curl -fsSL https://raw.githubusercontent.com/Qiu-Sec/Vesper-Releases/main/deploy.sh | bash
 ```
 
+部署到**当前目录**，结构：
+
+```
+.
+├── vesper              # Vesper 面板
+├── sliver/             # Sliver 服务端
+│   └── sliver-server_linux-amd64
+└── .sliver/            # Sliver 数据
+```
+
 访问 `http://<IP>:8088`，登录 `admin / changeme`
 
-## 手动部署
+Vesper 会自动启动（Sliver 尝试自动启动，如失败会给出命令）。
 
-需先下载 [Sliver Server](https://github.com/BishopFox/sliver/releases) 放入项目目录。
+## 手动启动 Sliver
 
-### Linux / macOS
+如果自动启动失败（Sliver v1.7.3 有已知 gRPC 竞态 bug），在当前目录执行：
 
 ```bash
-# 1. Sliver 守护
-./sliver-server_linux daemon &
-
-# 2. 初始化 operator（仅首次）
-./sliver-server_linux operator --name admin1 --lhost 127.0.0.1 --permissions all \
-    --save ~/.sliver/configs/admin1_127.0.0.1.cfg
-
-# 3. 启动 Vesper
-./vesper-linux-amd64 --public 0.0.0.0:8088
+cd .sliver && ../sliver/sliver-server_linux-amd64 daemon &
+# 确认启动
+ss -tlnp | grep 31337
+# 初始化 operator（仅首次）
+../sliver/sliver-server_linux-amd64 operator --name admin1 --lhost 127.0.0.1 --permissions all \
+    --save .sliver/configs/admin1_127.0.0.1.cfg
+# 重启 Vesper
+kill $(pgrep vesper); sleep 1; ./vesper --public 0.0.0.0:8088 &
 ```
 
 ### Windows
@@ -55,8 +64,8 @@ curl -fsSL https://raw.githubusercontent.com/Qiu-Sec/Vesper-Releases/main/deploy
 > ⚠️ Windows 原生载荷生成可能失败（Go 版本兼容性），推荐用 Linux Vesper 交叉编译。
 
 ```cmd
-start /B sliver-server_windows-amd64.exe daemon
-sliver-server_windows-amd64.exe operator --name admin1 --lhost 127.0.0.1 --permissions all --save %USERPROFILE%\.sliver\configs\admin1_127.0.0.1.cfg
+start /B sliver\sliver-server_windows-amd64.exe daemon
+sliver\sliver-server_windows-amd64.exe operator --name admin1 --lhost 127.0.0.1 --permissions all --save .sliver\configs\admin1_127.0.0.1.cfg
 vesper-windows-amd64.exe --public 0.0.0.0:8088
 ```
 

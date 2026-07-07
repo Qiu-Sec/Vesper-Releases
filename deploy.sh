@@ -136,23 +136,36 @@ echo "[3/4] 启动 Sliver 守护..."
 kill $(pgrep -f "${SLIVER_BIN_NAME}" 2>/dev/null) 2>/dev/null || true
 sleep 1
 
+# Sliver v1.7.3 启动时有 gRPC 竞态 bug，旧数据库会触发 panic
+# 删除旧数据库确保干净启动
+rm -f "${SLIVER_ROOT}/sliver.db" "${SLIVER_ROOT}/sliver.db-shm" "${SLIVER_ROOT}/sliver.db-wal"
+
 export SLIVER_ROOT_DIR="${SLIVER_ROOT}"
 
-# 用 setsid 彻底脱离终端，防止脚本退出时 daemon 被 kill
-setsid "${SLIVER_BIN}" daemon > /dev/null 2>&1 < /dev/null &
-SLIVER_PID=$!
-disown "${SLIVER_PID}" 2>/dev/null || true
+SLIVER_STARTED=false
+for attempt in 1 2 3; do
+    # 用 setsid + disown 彻底脱离 shell 作业表
+    setsid "${SLIVER_BIN}" daemon > /dev/null 2>&1 < /dev/null &
+    SLIVER_PID=$!
+    disown "${SLIVER_PID}" 2>/dev/null || true
 
-# 等待 Sliver gRPC 端口就绪（最多 30 秒）
-for i in $(seq 1 30); do
-    if ss -tlnp 2>/dev/null | grep -q ":31337 "; then
-        break
-    fi
-    sleep 1
+    # 等待 Sliver gRPC 端口就绪（最多 15 秒）
+    for i in $(seq 1 15); do
+        if ss -tlnp 2>/dev/null | grep -q ":31337 "; then
+            SLIVER_STARTED=true
+            break 2
+        fi
+        sleep 1
+    done
+    # 启动失败，强制杀进程，清理数据库，重试
+    kill "${SLIVER_PID}" 2>/dev/null || true
+    sleep 2
+    rm -f "${SLIVER_ROOT}/sliver.db" "${SLIVER_ROOT}/sliver.db-shm" "${SLIVER_ROOT}/sliver.db-wal"
+    echo "  启动失败，第 ${attempt} 次重试..."
 done
 
-if ! ss -tlnp 2>/dev/null | grep -q ":31337 "; then
-    echo -e "${RED}FATAL: Sliver daemon 启动超时（30s），端口 31337 未监听${NC}"
+if [ "$SLIVER_STARTED" != true ]; then
+    echo -e "${RED}FATAL: Sliver daemon 启动失败（重试 3 次），端口 31337 未监听${NC}"
     exit 1
 fi
 echo -e "  ${GREEN}✓${NC} Sliver daemon PID=${SLIVER_PID}"

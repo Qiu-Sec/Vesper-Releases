@@ -21,6 +21,41 @@ echo "安装目录: ${INSTALL_DIR}"
 echo "Sliver 目录: ${SLIVER_ROOT}"
 echo ""
 
+# ── 环境检测 ──
+echo -e "${YELLOW}[0/4] 环境检测...${NC}"
+MISSING=""
+
+check_cmd() {
+    local name="$1" pkg="$2"
+    if ! command -v "$name" &>/dev/null; then
+        MISSING="$MISSING  $name"
+        echo -e "  ${RED}✗${NC} $name（安装: $pkg）"
+    else
+        echo -e "  ${GREEN}✓${NC} $name"
+    fi
+}
+
+check_cmd curl    "apt install curl"
+check_cmd unzip   "apt install unzip"
+check_cmd ss      "apt install iproute2"
+check_cmd pgrep   "apt install procps"
+check_cmd nohup   "apt install coreutils"
+
+# Sliver 生成 implant 需要 Go 编译器
+if ! command -v go &>/dev/null; then
+    echo -e "  ${YELLOW}⚠${NC} go（生成 Payload 需要，建议: apt install golang-go）"
+fi
+
+if [ -n "$MISSING" ]; then
+    echo ""
+    echo -e "${RED}FATAL: 缺少必需工具:${MISSING}${NC}"
+    echo ""
+    echo "  Debian/Ubuntu: sudo apt install curl unzip iproute2 procps"
+    echo "  CentOS/RHEL:   sudo yum install curl unzip iproute procps-ng"
+    exit 1
+fi
+echo ""
+
 # ── 检测平台 ──
 case "$(uname -s)" in
     Linux)  PLATFORM="linux-amd64"; SLIVER_BIN_NAME="sliver-server_linux-amd64" ;;

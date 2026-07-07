@@ -8,7 +8,7 @@ GREEN='\033[0;32m'
 YELLOW='\033[1;33m'
 NC='\033[0m'
 
-VESPER_VER="${VESPER_VER:-v0.3.6}"
+VESPER_VER="${VESPER_VER:-v0.3.7}"
 SLIVER_VER="${SLIVER_VER:-v1.7.3}"
 INSTALL_DIR="${INSTALL_DIR:-$HOME/vesper}"
 PUBLIC_ADDR="${PUBLIC_ADDR:-0.0.0.0:8088}"
@@ -48,12 +48,22 @@ echo "[1/4] 下载 Vesper..."
 if [ -f "${VESPER_BIN}" ]; then
     echo "  ✓ 已存在，跳过"
 else
+    DL_OK=false
     if command -v curl &>/dev/null; then
-        curl -fsSL "${VESPER_URL}" -o /tmp/vesper.zip
+        curl -fsSL --retry 2 --connect-timeout 10 "${VESPER_URL}" -o /tmp/vesper.zip 2>/dev/null && DL_OK=true
+        # 直连失败，尝试 HTTP 代理
+        if [ "$DL_OK" != true ] && [ -n "${https_proxy}" ]; then
+            echo "  代理重试..."
+            curl -fsSL --retry 2 --connect-timeout 10 -x "${https_proxy}" "${VESPER_URL}" -o /tmp/vesper.zip 2>/dev/null && DL_OK=true
+        fi
     elif command -v wget &>/dev/null; then
-        wget -q "${VESPER_URL}" -O /tmp/vesper.zip
+        wget -q --tries=3 "${VESPER_URL}" -O /tmp/vesper.zip 2>/dev/null && DL_OK=true
     else
         echo -e "${RED}需要 curl 或 wget${NC}"; exit 1
+    fi
+    if [ "$DL_OK" != true ]; then
+        echo -e "${RED}FATAL: 下载失败，检查网络或设置代理: export https_proxy=http://127.0.0.1:7897${NC}"
+        exit 1
     fi
     unzip -o /tmp/vesper.zip -d "${INSTALL_DIR}" >/dev/null
     # 重命名为统一名称 vesper
@@ -71,10 +81,18 @@ echo "[2/4] 下载 Sliver ${SLIVER_VER}..."
 if [ -f "${SLIVER_BIN}" ]; then
     echo "  ✓ 已存在，跳过"
 else
+    DL_OK=false
     if command -v curl &>/dev/null; then
-        curl -fsSL "${SLIVER_URL}" -o "${SLIVER_BIN}"
-    else
-        wget -q "${SLIVER_URL}" -O "${SLIVER_BIN}"
+        curl -fsSL --retry 2 --connect-timeout 10 "${SLIVER_URL}" -o "${SLIVER_BIN}" 2>/dev/null && DL_OK=true
+        if [ "$DL_OK" != true ] && [ -n "${https_proxy}" ]; then
+            echo "  代理重试..."
+            curl -fsSL --retry 2 --connect-timeout 10 -x "${https_proxy}" "${SLIVER_URL}" -o "${SLIVER_BIN}" 2>/dev/null && DL_OK=true
+        fi
+    elif command -v wget &>/dev/null; then
+        wget -q --tries=3 "${SLIVER_URL}" -O "${SLIVER_BIN}" 2>/dev/null && DL_OK=true
+    fi
+    if [ "$DL_OK" != true ]; then
+        echo -e "${RED}FATAL: Sliver 下载失败${NC}"; exit 1
     fi
     chmod +x "${SLIVER_BIN}"
     echo -e "  ${GREEN}✓${NC} $(du -h "${SLIVER_BIN}" | cut -f1)"
@@ -89,26 +107,33 @@ export SLIVER_ROOT_DIR="${SLIVER_ROOT}"
 
 nohup "${SLIVER_BIN}" daemon > /dev/null 2>&1 &
 SLIVER_PID=$!
-sleep 8
 
-if ! kill -0 $SLIVER_PID 2>/dev/null; then
-    echo -e "${RED}FATAL: Sliver daemon 启动失败${NC}"
+# 等待 Sliver gRPC 端口就绪（最多 30 秒）
+for i in $(seq 1 30); do
+    if ss -tlnp 2>/dev/null | grep -q ":31337 "; then
+        break
+    fi
+    sleep 1
+done
+
+if ! ss -tlnp 2>/dev/null | grep -q ":31337 "; then
+    echo -e "${RED}FATAL: Sliver daemon 启动超时（30s），端口 31337 未监听${NC}"
     exit 1
 fi
-echo -e "  ${GREEN}✓${NC} PID=${SLIVER_PID}"
+echo -e "  ${GREEN}✓${NC} Sliver daemon PID=${SLIVER_PID}"
 
 # ── 初始化 Operator ──
 OPERATOR_CFG="${SLIVER_ROOT}/configs/${OPERATOR_NAME}_${LHOST}.cfg"
 mkdir -p "${SLIVER_ROOT}/configs"
 
-if [ ! -f "${OPERATOR_CFG}" ]; then
-    echo "  创建 operator '${OPERATOR_NAME}'..."
-    "${SLIVER_BIN}" operator \
-        --name "${OPERATOR_NAME}" \
-        --lhost "${LHOST}" \
-        --permissions all \
-        --save "${OPERATOR_CFG}"
-fi
+echo "  创建 operator '${OPERATOR_NAME}'..."
+# 每次都重建，确保证书与当前 daemon 一致
+rm -f "${OPERATOR_CFG}"
+"${SLIVER_BIN}" operator \
+    --name "${OPERATOR_NAME}" \
+    --lhost "${LHOST}" \
+    --permissions all \
+    --save "${OPERATOR_CFG}"
 echo -e "  ${GREEN}✓${NC} Operator 就绪"
 
 # ── 启动 Vesper ──
